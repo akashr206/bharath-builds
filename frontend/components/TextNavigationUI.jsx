@@ -513,7 +513,7 @@ export default function TextNavigationUI({
                                 className="w-full h-full object-contain"
                             />
                         </div>
-                        <div className="flex-1 bg-muted rounded-xl md:rounded-2xl p-3 md:p-5 rounded-tl-sm text-foreground text-sm md:text-lg font-medium shadow-sm max-h-[140px] md:max-h-none overflow-y-auto">
+                        <div className="flex-1 bg-muted rounded-md md:rounded-lg p-3 md:p-5 rounded-tl-sm text-foreground text-sm md:text-lg font-medium shadow-sm max-h-[140px] md:max-h-none overflow-y-auto">
                             {loading || isProcessing ? (
                                 <span className="animate-pulse">
                                     Processing...
@@ -575,7 +575,7 @@ export default function TextNavigationUI({
                                     onChange={(e) => setInput(e.target.value)}
                                     placeholder="Type your response here..."
                                     disabled={loading || isListening}
-                                    className="w-full bg-muted border-none rounded-xl px-3 py-2.5 md:px-4 md:py-4 pr-16 outline-none focus:ring-2 focus:ring-primary text-sm md:text-lg"
+                                    className="w-full bg-muted border-none rounded-md px-3 py-2.5 md:px-4 md:py-4 pr-16 outline-none focus:ring-2 focus:ring-primary text-sm md:text-lg"
                                 />
                                 <button
                                     type="submit"

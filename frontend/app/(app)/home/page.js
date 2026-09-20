@@ -6,21 +6,23 @@ import useNavigationStore from '@/store/useNavigationStore.js';
 import useLocalizationStore from '@/store/useLocalizationStore.js';
 import { useVoiceStore, useVoice } from '@/hooks/useVoice.js';
 import { useRouter } from 'next/navigation';
-import { GraduationCap, Landmark, Bus, FileText, Volume2 } from 'lucide-react';
+import { GraduationCap, Landmark, Bus, FileText, Volume2, Search } from 'lucide-react';
 import { fetchAllSchemas } from '@/lib/apiService.js';
 import { apiFetch } from '@/lib/api.js';
+import { Card, CardContent } from '@/components/ui/card.jsx';
+import { Button } from '@/components/ui/button.jsx';
 
-// Color and icon mapping for specific forms to aid cognitive inclusivity
+// Color and icon mapping for specific forms
 const getFormStyling = (formId) => {
   switch (formId) {
     case 'national_scholarship':
-      return { color: 'bg-emerald-100 hover:bg-emerald-200 border-emerald-300 text-emerald-900', icon: GraduationCap };
+      return { color: 'text-primary bg-primary/10 hover:bg-primary hover:text-primary-foreground', icon: GraduationCap };
     case 'education_loan':
-      return { color: 'bg-purple-100 hover:bg-purple-200 border-purple-300 text-purple-900', icon: Landmark };
+      return { color: 'text-secondary bg-secondary/10 hover:bg-secondary hover:text-secondary-foreground', icon: Landmark };
     case 'bus_pass':
-      return { color: 'bg-blue-100 hover:bg-blue-200 border-blue-300 text-blue-900', icon: Bus };
+      return { color: 'text-accent bg-accent/10 hover:bg-accent hover:text-accent-foreground', icon: Bus };
     default:
-      return { color: 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-900', icon: FileText };
+      return { color: 'text-foreground bg-muted hover:bg-foreground hover:text-background', icon: FileText };
   }
 };
 
@@ -40,7 +42,7 @@ export default function HomePage() {
 
   useEffect(() => {
     setPage('home');
-    
+
     // Fetch available forms from backend
     const fetchData = async () => {
       try {
@@ -51,25 +53,23 @@ export default function HomePage() {
 
         const infoRes = await apiFetch("/api/information");
         if (infoRes.ok) {
-            const infoData = await infoRes.json();
-            setInfos(infoData);
+          const infoData = await infoRes.json();
+          setInfos(infoData);
         }
 
         if (isVoiceMode && !hasGreetedRef.current) {
           hasGreetedRef.current = true;
           pauseListening(false);
-          
+
           if (language && language !== 'English') {
             await useLocalizationStore.getState().fetchDictionary(language);
           }
-          
+
           let welcomeText = `Welcome to Parallax! You can apply for: ${formTitles.join(", ")}. Which one do you want to open?`;
           setSystemMessage(welcomeText);
-  
+
           setTimeout(async () => {
             try {
-              // Note: If you want this to be completely dynamic, you need TTS instead of pre-recorded audio.
-              // Assuming LLM will take over if the user just asks "What can I do?"
               await playSystemAudio("welcome_home");
               window.dispatchEvent(new Event('start-voice-turn'));
             } catch (e) {
@@ -93,91 +93,124 @@ export default function HomePage() {
   }, [setPage, setSystemMessage, isVoiceMode, language, playSystemAudio, setAvailableForms]);
 
   return (
-    <main className={`min-h-screen bg-background flex flex-col items-center justify-start pt-6 md:pt-12 p-4 md:p-8 ${isVoiceMode ? 'pb-[380px] md:pb-[420px]' : 'pb-16'}`}>
-      <div className="max-w-[1000px] w-full text-center space-y-6 flex flex-col items-center">
-        <img 
-          src="/logo.png" 
-          alt="Parallax Logo" 
-          className="w-16 h-16 md:w-24 md:h-24 object-contain rounded-2xl md:rounded-3xl shadow-sm border border-slate-100 p-2 bg-white"
-        />
-        <h1 className="font-heading text-3xl md:text-5xl lg:text-6xl text-primary tracking-tight font-bold">
-          Welcome to Parallax
-        </h1>
-        <p className="text-lg md:text-xl text-muted-foreground max-w-[700px] mx-auto font-medium">
-          An accessibility-first platform designed to help you access digital government services with ease.
-        </p>
-        
+    <main className={`min-h-screen bg-background flex flex-col items-center justify-start pt-6 md:pt-16 p-4 md:p-8 ${isVoiceMode ? 'pb-[380px] md:pb-[420px]' : 'pb-16'}`}>
+      <div className="max-w-[1100px] w-full flex flex-col items-start md:items-center text-left md:text-center space-y-6">
+
+        {/* Header Section */}
+        <div className="w-full mb-10 flex flex-col md:items-center">
+
+          <h1 className="text-4xl md:text-5xl text-foreground font-extrabold tracking-tight mb-4">
+            Service Dashboard
+          </h1>
+          <p className="text-lg md:text-xl text-muted-foreground font-medium max-w-3xl">
+            Select a service application below, or check the information board for updates.
+          </p>
+        </div>
+
         {loading ? (
-          <div className="mt-8 text-xl animate-pulse text-slate-400 font-bold">Loading available services...</div>
+          <div className="w-full mt-12 flex flex-col items-center justify-center space-y-4">
+            <div className="w-16 h-16 rounded-full border-4 border-muted border-t-primary animate-spin" />
+            <p className="text-xl font-bold text-muted-foreground font-mono">Fetching services...</p>
+          </div>
         ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 w-full mt-6">
-              {forms.map((form) => {
-                const { color, icon: Icon } = getFormStyling(form.formId);
-                return (
-                  <button
-                    key={form.formId}
-                    onClick={() => {
-                      if (isVoiceMode) {
-                        setSystemMessage(`Opening the ${form.title}.`);
-                      }
-                      router.push(`/form/${form.formId}`);
-                    }}
-                    className={`flex flex-col items-center text-center p-6 md:p-8 rounded-[2rem] border-4 shadow-sm hover:shadow-md transition-all hover:scale-[1.03] active:scale-[0.98] focus:outline-none focus:ring-8 focus:ring-primary/20 ${color}`}
-                    aria-label={`Open ${form.title}`}
-                  >
-                    <div className="w-16 h-16 md:w-20 md:h-20 shrink-0 bg-white/60 rounded-2xl flex items-center justify-center mb-4 shadow-xs">
-                      <Icon className="w-9 h-9 md:w-11 md:h-11 opacity-90" />
-                    </div>
-                    <div className="flex-1 flex items-center justify-center">
-                      <h2 className="text-xl md:text-2xl font-bold leading-snug">
-                        {form.title}
-                      </h2>
-                    </div>
-                  </button>
-                );
-              })}
+          <div className="w-full flex flex-col space-y-16">
+
+            {/* Forms Grid */}
+            <div className="w-full">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-3xl font-bold text-foreground">Available Services</h2>
+                <div className="hidden md:flex items-center gap-2 text-muted-foreground font-mono text-sm">
+                  <Search className="w-4 h-4" />
+                  <span>{forms.length} records found</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
+                {forms.map((form) => {
+                  const { color, icon: Icon } = getFormStyling(form.formId);
+                  return (
+                    <Card
+                      key={form.formId}
+                      className="group flex flex-col text-left cursor-pointer hover:shadow-md transition-all hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
+                      onClick={() => {
+                        if (isVoiceMode) {
+                          setSystemMessage(`Opening the ${form.title}.`);
+                        }
+                        router.push(`/form/${form.formId}`);
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              router.push(`/form/${form.formId}`);
+                          }
+                      }}
+                      aria-label={`Open ${form.title}`}
+                    >
+                      <CardContent className="p-8 flex flex-col flex-1 h-full">
+                        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-8 transition-colors ${color}`}>
+                          <Icon className="w-8 h-8" />
+                        </div>
+                        <div className="flex-1 flex flex-col justify-end">
+                          <span className="text-sm font-bold font-mono text-muted-foreground mb-2 block uppercase tracking-wider">
+                            Application
+                          </span>
+                          <h2 className="text-2xl font-bold text-foreground leading-snug group-hover:text-primary transition-colors">
+                            {form.title}
+                          </h2>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
             </div>
 
+            {/* Information Board */}
             {infos.length > 0 && (
-              <div className="w-full mt-12 text-left">
-                <h2 className="text-2xl md:text-3xl font-bold text-slate-800 mb-6 flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[#003441] rounded-full flex items-center justify-center">
-                    <FileText className="w-5 h-5 text-white" />
+              <div className="w-full">
+                <div className="flex items-center gap-4 mb-8">
+                  <h2 className="text-3xl font-bold text-foreground">Information Board</h2>
+                  <div className="px-3 py-1 bg-secondary/10 text-secondary rounded-full font-mono text-xs font-bold">
+                    {infos.length} Updates
                   </div>
-                  Information Board
-                </h2>
-                <div className="flex flex-col gap-4">
+                </div>
+
+                <div className="flex flex-col gap-6">
                   {infos.map((info, idx) => {
                     const title = info.title[language || "English"] || info.title["English"];
                     const content = info.content[language || "English"] || info.content["English"];
                     const audioUrl = info.audioUrls?.[language || "English"];
 
                     return (
-                      <div key={idx} className="bg-white p-6 md:p-8 rounded-[1.5rem] border-4 border-slate-200 shadow-sm flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
-                        <div className="flex-1">
-                          <h3 className="text-xl md:text-2xl font-bold text-primary mb-2">{title}</h3>
-                          <p className="text-lg text-slate-600 font-medium leading-relaxed">{content}</p>
-                        </div>
-                        {audioUrl && (
-                          <button 
-                            onClick={() => {
-                              const audio = new Audio(`http://localhost:8080${audioUrl}`);
-                              audio.play();
-                            }}
-                            className="shrink-0 bg-primary/10 hover:bg-primary/20 text-primary px-6 py-4 rounded-2xl font-bold text-lg flex items-center gap-2 transition-colors focus:ring-4 focus:ring-primary/30 outline-none"
-                            aria-label={`Listen to ${title}`}
-                          >
-                            Listen <Volume2 className="w-6 h-6" />
-                          </button>
-                        )}
-                      </div>
+                      <Card key={idx} className="hover:border-primary/50 transition-colors">
+                        <CardContent className="p-8 flex flex-col lg:flex-row gap-8 justify-between items-start lg:items-center">
+                          <div className="flex-1 space-y-4">
+                            <h3 className="text-2xl font-bold text-foreground">{title}</h3>
+                            <p className="text-lg text-muted-foreground font-medium leading-relaxed max-w-4xl">{content}</p>
+                          </div>
+                          {audioUrl && (
+                            <Button
+                              size="lg"
+                              onClick={() => {
+                                const audio = new Audio(`http://localhost:8080${audioUrl}`);
+                                audio.play();
+                              }}
+                              className="shrink-0 rounded-full font-bold text-lg px-8 h-14 flex items-center gap-3 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground"
+                              aria-label={`Listen to ${title}`}
+                            >
+                              Listen <Volume2 className="w-6 h-6" />
+                            </Button>
+                          )}
+                        </CardContent>
+                      </Card>
                     );
                   })}
                 </div>
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
 
