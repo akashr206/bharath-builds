@@ -1,0 +1,142 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: #fcf9f8;
+  --foreground: #1c1b1b;
+  --card: #ffffff;
+  --card-foreground: #1c1b1b;
+  --popover: #ffffff;
+  --popover-foreground: #1c1b1b;
+  --primary: #003441;
+  --primary-foreground: #ffffff;
+  --secondary: #605e55;
+  --secondary-foreground: #ffffff;
+  --muted: #e5e2e1;
+  --muted-foreground: #40484b;
+  --accent: #e5e2e1;
+  --accent-foreground: #1c1b1b;
+  --destructive: #ba1a1a;
+  --destructive-foreground: #ffffff;
+  --border: #c0c8cb;
+  --input: #e9e5d9;
+  --ring: #003441;
+  --chart-1: #306576;
+  --chart-2: #0f4c5c;
+  --chart-3: #9acee1;
+  --chart-4: #605e55;
+  --chart-5: #e6e2d6;
+  --radius: 0.5rem;
+  --sidebar: #fcf9f8;
+  --sidebar-foreground: #1c1b1b;
+  --sidebar-primary: #003441;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e5e2e1;
+  --sidebar-accent-foreground: #1c1b1b;
+  --sidebar-border: #c0c8cb;
+  --sidebar-ring: #003441;
+}
+
+.dark {
+  --background: #1c1b1b;
+  --foreground: #fcf9f8;
+  --card: #313030;
+  --card-foreground: #fcf9f8;
+  --popover: #313030;
+  --popover-foreground: #fcf9f8;
+  --primary: #9acee1;
+  --primary-foreground: #003441;
+  --secondary: #e6e2d6;
+  --secondary-foreground: #605e55;
+  --muted: #40484b;
+  --muted-foreground: #e5e2e1;
+  --accent: #40484b;
+  --accent-foreground: #fcf9f8;
+  --destructive: #ffdad6;
+  --destructive-foreground: #93000a;
+  --border: #70787c;
+  --input: #40484b;
+  --ring: #9acee1;
+  --chart-1: #9acee1;
+  --chart-2: #0f4c5c;
+  --chart-3: #306576;
+  --chart-4: #e6e2d6;
+  --chart-5: #605e55;
+  --sidebar: #1c1b1b;
+  --sidebar-foreground: #fcf9f8;
+  --sidebar-primary: #9acee1;
+  --sidebar-primary-foreground: #003441;
+  --sidebar-accent: #40484b;
+  --sidebar-accent-foreground: #fcf9f8;
+  --sidebar-border: #70787c;
+  --sidebar-ring: #9acee1;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+@theme inline {
+  --animate-shimmer: shimmer 1.5s infinite;
+
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+}
