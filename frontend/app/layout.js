@@ -14,8 +14,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata = {
-  title: "Campus Tech Spectrum - Accessibility Engine",
-  description: "Accessibility-first navigation engine for digital government services",
+  title: "Parallax - Accessibility First Platform",
+  description: "Accessibility-first platform for digital government services",
   icons: {
     icon: "/logo.png",
     shortcut: "/logo.png",
