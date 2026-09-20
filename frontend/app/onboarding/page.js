@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import useNavigationStore from '@/store/useNavigationStore';
-import useLocalizationStore from '@/store/useLocalizationStore';
+import useLocalizationStore, { useTranslation } from '@/store/useLocalizationStore';
 import { useVoice, VoiceState } from '@/hooks/useVoice';
 import { updateUserLanguage } from '@/lib/apiService';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,7 @@ export default function LanguageSelectionPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const setStoreLanguage = useNavigationStore((state) => state.setLanguage);
+  const t = useTranslation();
   const { interactionMode, setInteractionMode, startListening, pauseListening, playSystemAudio, speak, stopSpeaking, voiceState } = useVoice();
 
   const [step, setStep] = useState('mode'); // 'mode' | 'language'
@@ -217,15 +218,15 @@ export default function LanguageSelectionPage() {
           onClick={() => signOut({ callbackUrl: '/' })}
           className="absolute top-4 right-4 md:top-6 md:right-6 text-muted-foreground hover:text-foreground font-mono"
         >
-          Logout
+          {t('logout')}
         </Button>
         <div className="w-full max-w-[800px] text-center mb-16 mt-8 flex flex-col items-center">
 
           <h1 className="text-4xl md:text-5xl text-foreground font-extrabold tracking-tight mb-6">
-            Welcome to Parallax
+            {t('welcome_parallax')}
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground font-medium">
-            How would you like to interact today?
+            {t('interact_how')}
           </p>
         </div>
 
@@ -240,14 +241,14 @@ export default function LanguageSelectionPage() {
                 selectMode('text');
               }
             }}
-            className="w-full md:w-1/2 h-[240px] cursor-pointer hover:bg-accent hover:text-accent-foreground flex flex-col items-center justify-center shadow-sm hover:-translate-y-1 transition-transform group focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
+            className="w-full md:w-1/2 h-[240px] cursor-pointer hover:bg-primary/5 hover:border-primary/30 flex flex-col items-center justify-center shadow-sm hover:-translate-y-1 transition-all group focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
           >
             <CardContent className="flex flex-col items-center justify-center p-0">
               <span className="text-3xl text-primary font-bold mb-4 group-hover:scale-105 transition-transform">
-                Normal Mode
+                {t('normal_mode')}
               </span>
               <span className="text-lg text-muted-foreground font-medium text-center px-4">
-                Use touch, mouse, and keyboard to interact with the app.
+                {t('normal_mode_desc')}
               </span>
             </CardContent>
           </Card>
@@ -266,10 +267,10 @@ export default function LanguageSelectionPage() {
           >
             <CardContent className="flex flex-col items-center justify-center p-0">
               <span className="text-4xl font-bold mb-4 group-hover:scale-105 transition-transform">
-                No Touch Mode
+                {t('no_touch_mode')}
               </span>
               <span className="text-xl opacity-90 font-medium text-center px-4">
-                Navigate entirely by voice
+                {t('no_touch_mode_desc')}
               </span>
             </CardContent>
           </Card>
@@ -286,7 +287,7 @@ export default function LanguageSelectionPage() {
           onClick={() => signOut({ callbackUrl: '/' })}
           className="absolute top-4 right-4 md:top-6 md:right-6 text-muted-foreground hover:text-foreground font-mono"
         >
-          Logout
+          {t('logout')}
         </Button>
         <div className="w-full max-w-[800px] text-center space-y-10">
           <div className="w-40 h-40 md:w-56 md:h-56 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto mb-10 animate-pulse shadow-lg border border-border">
@@ -313,7 +314,7 @@ export default function LanguageSelectionPage() {
           </div>
           <div className="pt-6">
             <Button onClick={handleBackToMode} variant="outline" size="lg" className="font-bold">
-              Back to Mode Selection
+              {t('go_back')}
             </Button>
           </div>
         </div>
@@ -334,10 +335,10 @@ export default function LanguageSelectionPage() {
       <div className="w-full max-w-[800px] text-center mb-14 mt-8">
 
         <h1 className="text-4xl md:text-5xl text-foreground font-extrabold tracking-tight mb-4">
-          Select Your Language
+          {t('select_language')}
         </h1>
         <p className="text-lg md:text-xl text-muted-foreground font-medium">
-          Choose the language you are most comfortable with.
+          {t('choose_language')}
         </p>
       </div>
 

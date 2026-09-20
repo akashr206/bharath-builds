@@ -4,7 +4,7 @@ import React, { useEffect } from 'react';
 import { signOut, useSession } from 'next-auth/react';
 import { Button } from './ui/button';
 import useNavigationStore from '../store/useNavigationStore';
-import useLocalizationStore from '../store/useLocalizationStore';
+import useLocalizationStore, { useTranslation } from '../store/useLocalizationStore';
 import { useVoiceStore } from '../hooks/useVoice';
 import { updateUserLanguage, getUserProfile } from '../lib/apiService';
 import {
@@ -26,6 +26,7 @@ export default function Navbar() {
   const language = useNavigationStore((state) => state.language);
   const setLanguage = useNavigationStore((state) => state.setLanguage);
   const { interactionMode, setInteractionMode } = useVoiceStore();
+  const t = useTranslation();
 
   useEffect(() => {
     const syncProfileLanguage = async () => {
@@ -111,7 +112,7 @@ export default function Navbar() {
           title="Return to Home"
         >
           <Home className="w-4 h-4" />
-          <span className="hidden md:inline-block">Home</span>
+          <span className="hidden md:inline-block">{t('Home')}</span>
         </Link>
       </div>
       
@@ -135,7 +136,7 @@ export default function Navbar() {
             title="No-Touch Mode (Voice Navigation)"
           >
             <Mic className="w-4 h-4" />
-            <span className="hidden xs:inline">No-Touch</span>
+            <span className="hidden xs:inline">{t('voice_mode')}</span>
           </button>
           
           <button
@@ -149,7 +150,7 @@ export default function Navbar() {
             title="Normal Mode (Standard Touch & Typing)"
           >
             <MousePointer className="w-4 h-4" />
-            <span className="hidden xs:inline">Normal</span>
+            <span className="hidden xs:inline">{t('normal_mode')}</span>
           </button>
         </div>
 
@@ -198,7 +199,7 @@ export default function Navbar() {
                   className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer rounded-md font-bold p-3"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
+                  <span>{t('sign_out')}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

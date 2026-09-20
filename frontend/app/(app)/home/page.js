@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import TextNavigationUI from '@/components/TextNavigationUI.jsx';
 import useNavigationStore from '@/store/useNavigationStore.js';
-import useLocalizationStore from '@/store/useLocalizationStore.js';
+import useLocalizationStore, { useTranslation } from '@/store/useLocalizationStore.js';
 import { useVoiceStore, useVoice } from '@/hooks/useVoice.js';
 import { useRouter } from 'next/navigation';
 import { GraduationCap, Landmark, Bus, FileText, Volume2, Search } from 'lucide-react';
@@ -11,6 +11,7 @@ import { fetchAllSchemas } from '@/lib/apiService.js';
 import { apiFetch } from '@/lib/api.js';
 import { Card, CardContent } from '@/components/ui/card.jsx';
 import { Button } from '@/components/ui/button.jsx';
+import { Input } from '@/components/ui/input.jsx';
 
 // Color and icon mapping for specific forms
 const getFormStyling = (formId) => {
@@ -30,11 +31,11 @@ export default function HomePage() {
   const { setPage, setSystemMessage, language, setAvailableForms } = useNavigationStore();
   const { interactionMode } = useVoiceStore();
   const { playSystemAudio, pauseListening } = useVoice();
-  const t = useLocalizationStore(state => state.t);
+  const t = useTranslation();
   const router = useRouter();
 
   const [forms, setForms] = useState([]);
-  const [infos, setInfos] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
   const isVoiceMode = interactionMode === 'voice';
@@ -50,12 +51,6 @@ export default function HomePage() {
         setForms(data);
         const formTitles = (data || []).map(f => f.title);
         setAvailableForms(formTitles);
-
-        const infoRes = await apiFetch("/api/information");
-        if (infoRes.ok) {
-          const infoData = await infoRes.json();
-          setInfos(infoData);
-        }
 
         if (isVoiceMode && !hasGreetedRef.current) {
           hasGreetedRef.current = true;
@@ -100,10 +95,10 @@ export default function HomePage() {
         <div className="w-full mb-10 flex flex-col md:items-center">
 
           <h1 className="text-4xl md:text-5xl text-foreground font-extrabold tracking-tight mb-4">
-            Service Dashboard
+            {t('service_dashboard')}
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground font-medium max-w-3xl">
-            Select a service application below, or check the information board for updates.
+            {t('select_service')}
           </p>
         </div>
 
@@ -117,99 +112,79 @@ export default function HomePage() {
 
             {/* Forms Grid */}
             <div className="w-full">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-3xl font-bold text-foreground">Available Services</h2>
-                <div className="hidden md:flex items-center gap-2 text-muted-foreground font-mono text-sm">
-                  <Search className="w-4 h-4" />
-                  <span>{forms.length} records found</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
-                {forms.map((form) => {
-                  const { color, icon: Icon } = getFormStyling(form.formId);
-                  return (
-                    <Card
-                      key={form.formId}
-                      className="group flex flex-col text-left cursor-pointer hover:shadow-md transition-all hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
-                      onClick={() => {
-                        if (isVoiceMode) {
-                          setSystemMessage(`Opening the ${form.title}.`);
-                        }
-                        router.push(`/form/${form.formId}`);
-                      }}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              router.push(`/form/${form.formId}`);
-                          }
-                      }}
-                      aria-label={`Open ${form.title}`}
-                    >
-                      <CardContent className="p-8 flex flex-col flex-1 h-full">
-                        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-8 transition-colors ${color}`}>
-                          <Icon className="w-8 h-8" />
-                        </div>
-                        <div className="flex-1 flex flex-col justify-end">
-                          <span className="text-sm font-bold font-mono text-muted-foreground mb-2 block uppercase tracking-wider">
-                            Application
-                          </span>
-                          <h2 className="text-2xl font-bold text-foreground leading-snug group-hover:text-primary transition-colors">
-                            {form.title}
-                          </h2>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Information Board */}
-            {infos.length > 0 && (
-              <div className="w-full">
-                <div className="flex items-center gap-4 mb-8">
-                  <h2 className="text-3xl font-bold text-foreground">Information Board</h2>
-                  <div className="px-3 py-1 bg-secondary/10 text-secondary rounded-full font-mono text-xs font-bold">
-                    {infos.length} Updates
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
+                <h2 className="text-3xl font-bold text-foreground">{t('available_services')}</h2>
+                
+                <div className="relative w-full md:w-72">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Search className="h-4 w-4 text-muted-foreground" />
                   </div>
-                </div>
-
-                <div className="flex flex-col gap-6">
-                  {infos.map((info, idx) => {
-                    const title = info.title[language || "English"] || info.title["English"];
-                    const content = info.content[language || "English"] || info.content["English"];
-                    const audioUrl = info.audioUrls?.[language || "English"];
-
-                    return (
-                      <Card key={idx} className="hover:border-primary/50 transition-colors">
-                        <CardContent className="p-8 flex flex-col lg:flex-row gap-8 justify-between items-start lg:items-center">
-                          <div className="flex-1 space-y-4">
-                            <h3 className="text-2xl font-bold text-foreground">{title}</h3>
-                            <p className="text-lg text-muted-foreground font-medium leading-relaxed max-w-4xl">{content}</p>
-                          </div>
-                          {audioUrl && (
-                            <Button
-                              size="lg"
-                              onClick={() => {
-                                const audio = new Audio(`http://localhost:8080${audioUrl}`);
-                                audio.play();
-                              }}
-                              className="shrink-0 rounded-full font-bold text-lg px-8 h-14 flex items-center gap-3 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground"
-                              aria-label={`Listen to ${title}`}
-                            >
-                              Listen <Volume2 className="w-6 h-6" />
-                            </Button>
-                          )}
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
+                  <Input 
+                    type="text" 
+                    placeholder={t('search_services')}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 h-12 rounded-full border-border bg-background"
+                  />
                 </div>
               </div>
-            )}
+
+              {(() => {
+                const filteredForms = forms.filter(form => 
+                  form.title.toLowerCase().includes(searchQuery.toLowerCase())
+                );
+                
+                return (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
+                      {filteredForms.map((form) => {
+                        const { color, icon: Icon } = getFormStyling(form.formId);
+                        return (
+                          <Card
+                            key={form.formId}
+                            className="group flex flex-col text-left cursor-pointer hover:shadow-md transition-all hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
+                            onClick={() => {
+                              if (isVoiceMode) {
+                                setSystemMessage(`Opening the ${form.title}.`);
+                              }
+                              router.push(`/form/${form.formId}`);
+                            }}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    router.push(`/form/${form.formId}`);
+                                }
+                            }}
+                            aria-label={`Open ${form.title}`}
+                          >
+                            <CardContent className="p-8 flex flex-col flex-1 h-full">
+                              <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-8 transition-colors ${color}`}>
+                                <Icon className="w-8 h-8" />
+                              </div>
+                              <div className="flex-1 flex flex-col justify-end">
+                                <span className="text-sm font-bold font-mono text-muted-foreground mb-2 block uppercase tracking-wider">
+                                  {t('application_badge')}
+                                </span>
+                                <h2 className="text-2xl font-bold text-foreground leading-snug group-hover:text-primary transition-colors">
+                                  {form.title}
+                                </h2>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                    {filteredForms.length === 0 && (
+                      <div className="w-full py-16 text-center border-2 border-dashed border-border rounded-xl">
+                        <p className="text-xl text-muted-foreground font-medium">{t('no_services')} "{searchQuery}"</p>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
           </div>
         )}
       </div>

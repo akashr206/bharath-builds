@@ -3,11 +3,31 @@
 import React, { useEffect, useState, useRef } from "react";
 import useFormStore from "../store/useFormStore.js";
 import useNavigationStore from "../store/useNavigationStore.js";
+import useLocalizationStore, { useTranslation } from "../store/useLocalizationStore.js";
 import { Button } from "./ui/button.jsx";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card.jsx";
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+    CardDescription,
+} from "./ui/card.jsx";
 import { Input } from "./ui/input.jsx";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select.jsx";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "./ui/dialog.jsx";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "./ui/select.jsx";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from "./ui/dialog.jsx";
 import { Progress } from "./ui/progress.jsx";
 import { Label } from "./ui/label.jsx";
 import { executeAction } from "../lib/actionDispatcher.js";
@@ -31,7 +51,7 @@ import {
     Sparkles,
     Eye,
     X,
-    ExternalLink
+    ExternalLink,
 } from "lucide-react";
 import { apiFetch } from "../lib/api.js";
 
@@ -50,6 +70,7 @@ export default function AccessibleForm({ formId }) {
         useNavigationStore();
     const router = useRouter();
     const { speak, queueSpeak, waitForSpeakQueue, pauseListening } = useVoice();
+    const t = useTranslation();
 
     const [activeScannerTarget, setActiveScannerTarget] = useState(null); // 'autofill' or field object
     const [isProcessing, setIsProcessing] = useState(false);
@@ -62,7 +83,9 @@ export default function AccessibleForm({ formId }) {
             if (!formId) return;
             await loadSchema(formId);
             try {
-                const submissionRes = await apiFetch(`/api/submissions/${formId}`);
+                const submissionRes = await apiFetch(
+                    `/api/submissions/${formId}`,
+                );
                 let loadedSubmission = false;
                 if (submissionRes.ok) {
                     const existingSub = await submissionRes.json();
@@ -73,17 +96,22 @@ export default function AccessibleForm({ formId }) {
                         }));
                         const currentSchema = useFormStore.getState().schema;
                         if (currentSchema) {
-                            useNavigationStore.getState().setStep(currentSchema.steps.length);
+                            useNavigationStore
+                                .getState()
+                                .setStep(currentSchema.steps.length);
                         }
                         loadedSubmission = true;
                     }
                 }
-                
+
                 if (!loadedSubmission) {
                     const draftData = await getDraft(formId);
                     if (draftData && draftData.draft) {
                         useFormStore.setState((state) => ({
-                            values: { ...state.values, ...draftData.draft.values },
+                            values: {
+                                ...state.values,
+                                ...draftData.draft.values,
+                            },
                         }));
                         if (draftData.draft.currentStepIndex !== undefined) {
                             useNavigationStore
@@ -126,7 +154,8 @@ export default function AccessibleForm({ formId }) {
 
         if (
             schema &&
-            (schema.steps[currentStepIndex] || currentStepIndex === schema.steps.length) &&
+            (schema.steps[currentStepIndex] ||
+                currentStepIndex === schema.steps.length) &&
             !hasAssistantGreeting &&
             draftLoaded &&
             !fetchingRef.current
@@ -144,8 +173,11 @@ export default function AccessibleForm({ formId }) {
 
             const fetchGreeting = async () => {
                 try {
-                    const isReviewStep = currentStepIndex === schema.steps.length;
-                    const currentStep = isReviewStep ? { title: "Review", id: "review_step", fields: [] } : schema.steps[currentStepIndex];
+                    const isReviewStep =
+                        currentStepIndex === schema.steps.length;
+                    const currentStep = isReviewStep
+                        ? { title: "Review", id: "review_step", fields: [] }
+                        : schema.steps[currentStepIndex];
                     const context = {
                         current_page: "form",
                         form_title: schema.title,
@@ -155,35 +187,59 @@ export default function AccessibleForm({ formId }) {
                             fields: currentStep.fields,
                         },
                         form_values: useFormStore.getState().values,
-                        available_steps: schema.steps.map((s) => s.id),
+                        available_steps: [
+                            ...schema.steps.map((s) => s.id),
+                            "review_step",
+                        ],
                     };
-                    const docType = currentStep.autofill_document_type ? ` You can ask them to upload their ${currentStep.autofill_document_type} to autofill this step.` : "";
+                    const formValues = useFormStore.getState().values;
+                    const stepFields = currentStep.fields || [];
+                    const missingRequired = stepFields.filter(f => f.required && !formValues[f.id]);
+                    const isFullyFilled = stepFields.length > 0 && missingRequired.length === 0;
+                    
+                    const hasUploadedFiles = Object.values(formValues).some(v => typeof v === 'string' && (v.startsWith('http') || v.startsWith('data:')));
+                    
+                    const docType = (currentStep.autofill_document_type && !hasUploadedFiles) 
+                        ? ` You can ask them to upload their ${currentStep.autofill_document_type} to autofill this step.` 
+                        : "";
                     
                     let promptMsg = "";
                     if (useFormStore.getState().isSubmitted) {
                         promptMsg = `I just opened this application but I have already submitted it previously. Let me know that my form is already submitted, and ask if I would like to view my submitted details or delete my previous submission to restart.`;
                     } else if (isReviewStep) {
                         promptMsg = `I just entered the Review step. Please read out my details and ask me to confirm if everything is correct before I submit.`;
+                    } else if (isFullyFilled) {
+                        promptMsg = `I just entered the ${currentStep.title} step, but I have already filled out all the required information here. Please let me know that my details/documents are already provided and ask if I want to review/modify them, or proceed to the next step.`;
                     } else if (currentStepIndex === 0) {
-                        promptMsg = `I just started the application. Please introduce the form and let me know I can tell you my details or scan/upload documents to autofill.${docType}`;
+                        promptMsg = `I just started the application. Please introduce the form and ask for my details.${!hasUploadedFiles ? ` Let me know I can tell you my details or scan/upload documents to autofill.` : ''}${docType}`;
                     } else {
-                        promptMsg = `I just entered the ${currentStep.title} step. Please briefly announce this step and remind me I can tell you my details or scan/upload documents.${docType}`;
+                        promptMsg = `I just entered the ${currentStep.title} step. Please briefly announce this step and ask for my details.${!hasUploadedFiles ? ` Remind me I can tell you my details or scan/upload documents.` : ''}${docType}`;
                     }
 
-                    const action = await fetchChatActionStream(promptMsg, context, (sentence) => {
-                        if (currentMode === "voice") {
-                            queueSpeak(sentence);
-                        }
-                        useNavigationStore.getState().appendSystemMessage(sentence);
-                    });
+                    const action = await fetchChatActionStream(
+                        promptMsg,
+                        context,
+                        (sentence) => {
+                            if (currentMode === "voice") {
+                                queueSpeak(sentence);
+                            }
+                            useNavigationStore
+                                .getState()
+                                .appendSystemMessage(sentence);
+                        },
+                    );
 
                     if (action && action.message) {
                         setSystemMessage(action.message);
                         if (currentMode === "voice") {
                             waitForSpeakQueue().then(() => {
-                                const modeAfter = document.getElementById("interaction-mode-indicator")?.dataset?.mode;
+                                const modeAfter = document.getElementById(
+                                    "interaction-mode-indicator",
+                                )?.dataset?.mode;
                                 if (modeAfter === "voice") {
-                                    window.dispatchEvent(new Event("start-voice-turn"));
+                                    window.dispatchEvent(
+                                        new Event("start-voice-turn"),
+                                    );
                                 }
                             });
                         }
@@ -240,37 +296,49 @@ export default function AccessibleForm({ formId }) {
         const handleSubmit = async () => {
             try {
                 const res = await apiFetch(`/api/submissions/${formId}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ values: useFormStore.getState().values })
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        values: useFormStore.getState().values,
+                    }),
                 });
-                
+
                 if (res.ok) {
                     setSystemMessage("Form successfully submitted.", true);
                     useFormStore.getState().resetForm();
                     useNavigationStore.getState().resetNavigation();
-                    
-                    const currentMode = document.getElementById("interaction-mode-indicator")?.dataset?.mode;
+
+                    const currentMode = document.getElementById(
+                        "interaction-mode-indicator",
+                    )?.dataset?.mode;
                     if (currentMode === "voice") {
                         speak("Form successfully submitted.").then(() => {
-                            router.push('/home');
+                            router.push("/home");
                         });
                     } else {
-                        router.push('/home');
+                        router.push("/home");
                     }
                 } else {
                     const data = await res.json();
-                    setSystemMessage(`Failed to submit form: ${data.error}`, true);
+                    setSystemMessage(
+                        `Failed to submit form: ${data.error}`,
+                        true,
+                    );
                 }
             } catch (err) {
                 console.error("Submission error", err);
-                setSystemMessage("Failed to submit form due to a network error.", true);
+                setSystemMessage(
+                    "Failed to submit form due to a network error.",
+                    true,
+                );
             }
         };
 
         const handleRestart = async () => {
             try {
-                await apiFetch(`/api/submissions/${formId}`, { method: 'DELETE' });
+                await apiFetch(`/api/submissions/${formId}`, {
+                    method: "DELETE",
+                });
             } catch (e) {
                 console.error("Failed to delete form", e);
             }
@@ -380,13 +448,19 @@ export default function AccessibleForm({ formId }) {
                 form_values: useFormStore.getState().values,
                 available_steps: schema.steps.map((s) => s.id),
             };
-            const action = await fetchChatActionStream(msg, context, (sentence) => {
-                const currentMode = document.getElementById("interaction-mode-indicator")?.dataset?.mode;
-                if (currentMode === "voice") {
-                    queueSpeak(sentence);
-                }
-                useNavigationStore.getState().appendSystemMessage(sentence);
-            });
+            const action = await fetchChatActionStream(
+                msg,
+                context,
+                (sentence) => {
+                    const currentMode = document.getElementById(
+                        "interaction-mode-indicator",
+                    )?.dataset?.mode;
+                    if (currentMode === "voice") {
+                        queueSpeak(sentence);
+                    }
+                    useNavigationStore.getState().appendSystemMessage(sentence);
+                },
+            );
 
             if (action && action.message) {
                 setSystemMessage(action.message);
@@ -396,8 +470,11 @@ export default function AccessibleForm({ formId }) {
                 if (currentMode === "voice") {
                     waitForSpeakQueue().then(() => {
                         setTimeout(
-                            () => window.dispatchEvent(new Event("start-voice-turn")),
-                            200
+                            () =>
+                                window.dispatchEvent(
+                                    new Event("start-voice-turn"),
+                                ),
+                            200,
                         );
                     });
                 }
@@ -498,7 +575,16 @@ export default function AccessibleForm({ formId }) {
         );
     }
 
-    if (!schema) return null;
+    if (!schema || !draftLoaded) {
+        return (
+            <div className="w-full flex flex-col items-center justify-center min-h-[500px] text-center p-8 space-y-6">
+                <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+                <h2 className="text-2xl font-bold text-foreground">
+                    Loading your application...
+                </h2>
+            </div>
+        );
+    }
 
     if (isSubmitted) {
         return (
@@ -506,34 +592,58 @@ export default function AccessibleForm({ formId }) {
                 <div className="w-24 h-24 bg-primary/10 border border-border rounded-full flex items-center justify-center mx-auto mb-4">
                     <CheckCircle className="w-12 h-12 text-primary" />
                 </div>
-                <h2 className="text-4xl md:text-5xl font-extrabold text-foreground">Application Submitted</h2>
+                <h2 className="text-4xl md:text-5xl font-extrabold text-foreground">
+                    Application Submitted
+                </h2>
                 <p className="text-lg md:text-xl text-muted-foreground max-w-lg mx-auto font-medium">
-                    You have already successfully submitted this application. Your details have been recorded.
+                    You have already successfully submitted this application.
+                    Your details have been recorded.
                 </p>
-                
+
                 <Card className="w-full max-w-3xl mt-8 mb-8 text-left shadow-sm overflow-hidden">
                     <CardHeader className="bg-muted border-b border-border px-8 py-5">
-                        <CardTitle className="text-2xl font-bold text-foreground">Submitted Details</CardTitle>
+                        <CardTitle className="text-2xl font-bold text-foreground">
+                            Submitted Details
+                        </CardTitle>
                     </CardHeader>
                     <CardContent className="p-8 divide-y divide-border">
                         {schema.steps.map((step) => (
-                            <div key={step.id} className="py-6 first:pt-0 last:pb-0">
-                                <h4 className="text-xl font-bold text-primary mb-4">{step.title}</h4>
+                            <div
+                                key={step.id}
+                                className="py-6 first:pt-0 last:pb-0"
+                            >
+                                <h4 className="text-xl font-bold text-primary mb-4">
+                                    {step.title}
+                                </h4>
                                 <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                                     {step.fields.map((field) => (
-                                        <div key={field.id} className="flex flex-col">
-                                            <dt className="text-sm font-bold text-muted-foreground mb-1 uppercase tracking-wider">{field.label}</dt>
+                                        <div
+                                            key={field.id}
+                                            className="flex flex-col"
+                                        >
+                                            <dt className="text-sm font-bold text-muted-foreground mb-1 uppercase tracking-wider">
+                                                {field.label}
+                                            </dt>
                                             <dd className="text-lg font-medium text-foreground">
                                                 {field.type === "file" ? (
                                                     values[field.id] ? (
-                                                        <a href={values[field.id]} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-1 font-bold">
-                                                            View Document <ExternalLink className="w-4 h-4" />
+                                                        <a
+                                                            href={
+                                                                values[field.id]
+                                                            }
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-primary hover:underline flex items-center gap-1 font-bold"
+                                                        >
+                                                            View Document{" "}
+                                                            <ExternalLink className="w-4 h-4" />
                                                         </a>
                                                     ) : (
                                                         "Not uploaded"
                                                     )
                                                 ) : (
-                                                    values[field.id] || "Not provided"
+                                                    values[field.id] ||
+                                                    "Not provided"
                                                 )}
                                             </dd>
                                         </div>
@@ -546,7 +656,15 @@ export default function AccessibleForm({ formId }) {
                 <div className="flex flex-col sm:flex-row gap-4 pt-8 justify-center w-full">
                     <Button
                         size="lg"
-                        onClick={() => executeAction({ action: ACTIONS.NAVIGATE_PAGE, target: 'home' }, router)}
+                        onClick={() =>
+                            executeAction(
+                                {
+                                    action: ACTIONS.NAVIGATE_PAGE,
+                                    target: "home",
+                                },
+                                router,
+                            )
+                        }
                         className="h-16 px-10 text-xl font-bold flex-1 max-w-[250px]"
                     >
                         Back to Home
@@ -554,7 +672,12 @@ export default function AccessibleForm({ formId }) {
                     <Button
                         size="lg"
                         variant="destructive"
-                        onClick={() => executeAction({ action: ACTIONS.RESTART_FORM }, router)}
+                        onClick={() =>
+                            executeAction(
+                                { action: ACTIONS.RESTART_FORM },
+                                router,
+                            )
+                        }
                         className="h-16 px-10 text-xl font-bold flex-1 max-w-[250px]"
                     >
                         Delete & Restart
@@ -565,10 +688,10 @@ export default function AccessibleForm({ formId }) {
     }
 
     const isReviewStep = currentStepIndex === schema.steps.length;
-    const currentStep = isReviewStep 
-        ? { title: "Review & Submit", id: "review_step", fields: [] } 
+    const currentStep = isReviewStep
+        ? { title: "Review & Submit", id: "review_step", fields: [] }
         : schema.steps[currentStepIndex];
-    
+
     if (!currentStep) return null;
 
     const handleNext = () => {
@@ -605,11 +728,20 @@ export default function AccessibleForm({ formId }) {
                 <div className="mb-10 space-y-4">
                     <div className="flex items-center justify-between">
                         <span className="text-sm font-bold uppercase tracking-wider text-primary bg-primary/10 border border-primary/20 px-4 py-1.5 rounded-lg">
-                            Step {Math.min(currentStepIndex + 1, schema.steps.length)} of {schema.steps.length}
+                            Step{" "}
+                            {Math.min(
+                                currentStepIndex + 1,
+                                schema.steps.length,
+                            )}{" "}
+                            of {schema.steps.length}
                         </span>
                         <span className="text-sm font-bold text-muted-foreground font-mono">
                             {Math.round(
-                                (Math.min(currentStepIndex + 1, schema.steps.length) / schema.steps.length) *
+                                (Math.min(
+                                    currentStepIndex + 1,
+                                    schema.steps.length,
+                                ) /
+                                    schema.steps.length) *
                                     100,
                             )}
                             % Complete
@@ -621,7 +753,17 @@ export default function AccessibleForm({ formId }) {
                     </h2>
 
                     {/* Visual Progress Bar */}
-                    <Progress value={(Math.min(currentStepIndex + 1, schema.steps.length) / schema.steps.length) * 100} className="h-3" />
+                    <Progress
+                        value={
+                            (Math.min(
+                                currentStepIndex + 1,
+                                schema.steps.length,
+                            ) /
+                                schema.steps.length) *
+                            100
+                        }
+                        className="h-3"
+                    />
                 </div>
 
                 {/* Impairment-Friendly Big Button Autofill Bar */}
@@ -666,22 +808,38 @@ export default function AccessibleForm({ formId }) {
                 <div className="space-y-6">
                     {isReviewStep ? (
                         <div className="flex flex-col gap-6">
-                            <h2 className="text-3xl md:text-4xl font-extrabold text-foreground mb-2">Review Your Application</h2>
-                            <p className="text-lg md:text-xl text-muted-foreground font-medium mb-6">Please check all your details before submitting.</p>
-                            {schema.steps.map(step => (
+                            <h2 className="text-3xl md:text-4xl font-extrabold text-foreground mb-2">
+                                Review Your Application
+                            </h2>
+                            <p className="text-lg md:text-xl text-muted-foreground font-medium mb-6">
+                                Please check all your details before submitting.
+                            </p>
+                            {schema.steps.map((step) => (
                                 <Card key={step.id} className="shadow-sm">
                                     <CardHeader>
-                                        <CardTitle className="text-2xl font-bold text-primary">{step.title}</CardTitle>
+                                        <CardTitle className="text-2xl font-bold text-primary">
+                                            {step.title}
+                                        </CardTitle>
                                     </CardHeader>
                                     <CardContent>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                            {step.fields.map(field => (
-                                                <div key={field.id} className="flex flex-col">
-                                                    <span className="text-muted-foreground text-sm font-bold uppercase tracking-wider mb-1">{field.label}</span>
+                                            {step.fields.map((field) => (
+                                                <div
+                                                    key={field.id}
+                                                    className="flex flex-col"
+                                                >
+                                                    <span className="text-muted-foreground text-sm font-bold uppercase tracking-wider mb-1">
+                                                        {field.label}
+                                                    </span>
                                                     <span className="text-xl font-medium text-foreground">
-                                                        {field.type === 'file' && values[field.id] 
-                                                            ? "Document Uploaded" 
-                                                            : values[field.id] || "Not provided"}
+                                                        {field.type ===
+                                                            "file" &&
+                                                        values[field.id]
+                                                            ? "Document Uploaded"
+                                                            : values[
+                                                                  field.id
+                                                              ] ||
+                                                              "Not provided"}
                                                     </span>
                                                 </div>
                                             ))}
@@ -729,12 +887,19 @@ export default function AccessibleForm({ formId }) {
                                                     )
                                             }
                                         >
-                                            <SelectTrigger id={field.id} className={`h-14 text-lg bg-card ${isFocused ? "ring-2 ring-primary" : ""}`}>
+                                            <SelectTrigger
+                                                id={field.id}
+                                                className={`h-14 text-lg bg-card ${isFocused ? "ring-2 ring-primary" : ""}`}
+                                            >
                                                 <SelectValue placeholder="Select an option..." />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {field.options?.map((opt) => (
-                                                    <SelectItem key={opt} value={opt} className="text-lg">
+                                                    <SelectItem
+                                                        key={opt}
+                                                        value={opt}
+                                                        className="text-lg"
+                                                    >
                                                         {opt}
                                                     </SelectItem>
                                                 ))}
@@ -745,18 +910,21 @@ export default function AccessibleForm({ formId }) {
                                             <Button
                                                 size="lg"
                                                 onClick={() =>
-                                                    setActiveScannerTarget(field)
+                                                    setActiveScannerTarget(
+                                                        field,
+                                                    )
                                                 }
                                                 className={`h-14 flex-1 text-lg font-bold transition-all flex items-center justify-center gap-2 ${values[field.id] ? "bg-secondary hover:bg-secondary/90 text-secondary-foreground" : "bg-primary hover:bg-primary/90 text-primary-foreground"}`}
                                             >
                                                 {values[field.id] ? (
                                                     <>
-                                                        <CheckCircle className="w-6 h-6" /> Verified
-                                                        (Rescan)
+                                                        <CheckCircle className="w-6 h-6" />{" "}
+                                                        Verified ({t("rescan")})
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <Camera className="w-6 h-6" /> Scan Document
+                                                        <Camera className="w-6 h-6" />{" "}
+                                                        Scan Document
                                                     </>
                                                 )}
                                             </Button>
@@ -771,12 +939,14 @@ export default function AccessibleForm({ formId }) {
                                             >
                                                 {values[field.id] ? (
                                                     <>
-                                                        <CheckCircle className="w-6 h-6" /> Verified
-                                                        (Re-upload)
+                                                        <CheckCircle className="w-6 h-6" />{" "}
+                                                        Verified (
+                                                        {t("reupload")})
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <Upload className="w-6 h-6" /> Upload File
+                                                        <Upload className="w-6 h-6" />{" "}
+                                                        Upload File
                                                     </>
                                                 )}
                                             </Button>
@@ -784,10 +954,15 @@ export default function AccessibleForm({ formId }) {
                                                 <Button
                                                     variant="outline"
                                                     size="lg"
-                                                    onClick={() => setViewImageTarget(values[field.id])}
+                                                    onClick={() =>
+                                                        setViewImageTarget(
+                                                            values[field.id],
+                                                        )
+                                                    }
                                                     className="h-14 flex-1 text-lg font-bold transition-all flex items-center justify-center gap-2 bg-muted hover:bg-muted/80 text-foreground border-border"
                                                 >
-                                                    <Eye className="w-6 h-6" /> View Document
+                                                    <Eye className="w-6 h-6" />{" "}
+                                                    {t("view_document")}
                                                 </Button>
                                             )}
                                         </div>
@@ -829,17 +1004,19 @@ export default function AccessibleForm({ formId }) {
                     disabled={currentStepIndex === 0}
                     className="h-14 md:h-16 px-8 text-lg md:text-xl font-bold bg-card border-border flex-1 max-w-[200px]"
                 >
-                    Back
+                    {t("go_back_form")}
                 </Button>
                 <Button
                     size="lg"
                     onClick={handleNext}
                     disabled={isReviewStep && isSubmitted}
-                    className={`h-14 md:h-16 px-8 text-lg md:text-xl font-bold flex-1 ${isReviewStep && isSubmitted ? 'opacity-50 cursor-not-allowed bg-muted text-muted-foreground' : 'bg-primary hover:bg-primary/90'}`}
+                    className={`h-14 md:h-16 px-8 text-lg md:text-xl font-bold flex-1 ${isReviewStep && isSubmitted ? "opacity-50 cursor-not-allowed bg-muted text-muted-foreground" : "bg-primary hover:bg-primary/90"}`}
                 >
                     {isReviewStep
-                        ? isSubmitted ? "Already Submitted" : "Submit Application"
-                        : "Next Step"}
+                        ? isSubmitted
+                            ? "Already Submitted"
+                            : t("submit_application")
+                        : t("next")}
                 </Button>
             </div>
 
@@ -850,7 +1027,10 @@ export default function AccessibleForm({ formId }) {
                 />
             )}
 
-            <Dialog open={!!activeFileTarget} onOpenChange={(open) => !open && setActiveFileTarget(null)}>
+            <Dialog
+                open={!!activeFileTarget}
+                onOpenChange={(open) => !open && setActiveFileTarget(null)}
+            >
                 <DialogContent className="sm:max-w-md text-center p-8 md:p-12">
                     <div className="flex flex-col items-center space-y-6">
                         <div className="w-24 h-24 bg-primary/10 border border-border rounded-full flex items-center justify-center mx-auto mb-2">
@@ -892,14 +1072,23 @@ export default function AccessibleForm({ formId }) {
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={!!viewImageTarget} onOpenChange={(open) => !open && setViewImageTarget(null)}>
+            <Dialog
+                open={!!viewImageTarget}
+                onOpenChange={(open) => !open && setViewImageTarget(null)}
+            >
                 <DialogContent className="max-w-4xl p-6">
                     <DialogHeader className="flex flex-row justify-between items-center mb-4 space-y-0">
-                        <DialogTitle className="text-2xl font-bold">Document Preview</DialogTitle>
+                        <DialogTitle className="text-2xl font-bold">
+                            Document Preview
+                        </DialogTitle>
                     </DialogHeader>
                     <div className="flex-1 overflow-auto rounded-lg border border-border flex items-center justify-center bg-muted min-h-[50vh]">
                         {viewImageTarget && (
-                            <img src={viewImageTarget} alt="Document Preview" className="max-w-full max-h-[75vh] object-contain" />
+                            <img
+                                src={viewImageTarget}
+                                alt="Document Preview"
+                                className="max-w-full max-h-[75vh] object-contain"
+                            />
                         )}
                     </div>
                 </DialogContent>

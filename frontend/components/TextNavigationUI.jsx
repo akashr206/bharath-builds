@@ -217,10 +217,15 @@ export default function TextNavigationUI({
                 navState.currentPage === "form" ||
                 (typeof window !== "undefined" &&
                     window.location.pathname.includes("/form/"));
-            const currentStep =
-                isFormPage && formState.schema
-                    ? formState.schema.steps[navState.currentStepIndex]
-                    : null;
+            const isReviewStep =
+                isFormPage &&
+                formState.schema &&
+                navState.currentStepIndex === formState.schema.steps.length;
+            const currentStep = isReviewStep
+                ? { id: "review_step", title: "Review & Submit", fields: [] }
+                : isFormPage && formState.schema
+                  ? formState.schema.steps[navState.currentStepIndex]
+                  : null;
             const currentField =
                 isFormPage && currentStep
                     ? currentStep.fields.find(
@@ -251,7 +256,10 @@ export default function TextNavigationUI({
                 form_values: isFormPage ? formState.values : {},
                 available_steps:
                     isFormPage && formState.schema
-                        ? formState.schema.steps.map((s) => s.id)
+                        ? [
+                              ...formState.schema.steps.map((s) => s.id),
+                              "review_step",
+                          ]
                         : [],
                 available_forms: isFormPage ? [] : navState.availableForms,
                 language: navState.language,
@@ -383,7 +391,9 @@ export default function TextNavigationUI({
 
     const containerClasses = inline
         ? "w-full h-full flex flex-col justify-center bg-transparent"
-        : "fixed bottom-0 left-0 w-full bg-background border-t border-border shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50 p-3 md:p-6";
+        : isHomeVoiceOnly
+          ? "fixed bottom-8 left-0 right-0 w-full z-50 px-4 pointer-events-none [&>*]:pointer-events-auto flex justify-center"
+          : "fixed bottom-0 left-0 w-full bg-background border-t border-border shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50 p-3 md:p-6";
 
     const innerClasses = inline
         ? "w-full flex flex-col gap-2 md:gap-4"
@@ -444,6 +454,41 @@ export default function TextNavigationUI({
                             Expand ▲
                         </button>
                     </div>
+                </div>
+            ) : isHomeVoiceOnly ? (
+                <div className="w-full max-w-[800px] bg-card border-2 border-border shadow-lg rounded-3xl flex items-center justify-between p-3 md:p-4 transition-all pointer-events-auto items-start">
+                    <div className="flex items-start gap-4 min-w-0 flex-1">
+                        <div className="w-12 h-12 md:w-14 md:h-14 rounded-full border border-border shadow-sm flex items-center justify-center shrink-0 overflow-hidden bg-background p-2 mt-1 md:mt-0">
+                            <img
+                                src="/logo.png"
+                                alt="Parallax"
+                                className="w-full h-full object-contain"
+                            />
+                        </div>
+                        <p className="text-sm md:text-lg text-foreground font-bold flex-1 pr-4 py-2 leading-snug">
+                            {isListening
+                                ? "Listening..."
+                                : isProcessing || loading
+                                  ? "Processing..."
+                                  : isSpeaking
+                                    ? "Speaking..."
+                                    : systemMessage || "Assistant ready"}
+                        </p>
+                    </div>
+                    <button
+                        onClick={handleVoiceAction}
+                        disabled={disableVoice}
+                        className={`w-12 h-12 md:w-16 md:h-16 shrink-0 rounded-full flex items-center justify-center text-white shadow-md transition-all mt-1 md:mt-0 ${
+                            isListening
+                                ? "bg-primary animate-pulse scale-105"
+                                : disableVoice
+                                  ? "bg-muted text-muted-foreground"
+                                  : "bg-primary hover:scale-105 hover:bg-primary/90"
+                        }`}
+                        aria-label="Toggle Voice"
+                    >
+                        {isListening || isSpeaking ? <StopIcon /> : <MicIcon />}
+                    </button>
                 </div>
             ) : (
                 <div className={innerClasses}>
@@ -587,15 +632,6 @@ export default function TextNavigationUI({
                                     Send
                                 </button>
                             </form>
-                        )}
-
-                        {!isHomeVoiceOnly && interactionMode === "voice" && (
-                            <button
-                                onClick={toggleInteractionMode}
-                                className="mt-1 md:mt-4 px-4 py-1.5 md:px-6 md:py-3 rounded-full bg-error/10 text-error font-bold text-xs md:text-sm hover:bg-error/20 transition-colors"
-                            >
-                                End Call
-                            </button>
                         )}
                     </div>
                 </div>
